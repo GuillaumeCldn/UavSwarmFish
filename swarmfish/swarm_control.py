@@ -5,11 +5,10 @@ from dataclasses import dataclass
 @dataclass
 class SwarmParams:
     # collective motion parameters
-    body_length: float
     max_velocity: float
     min_velocity: float
     velocity: float
-    mind2d: float # RM ?
+    alt: float
     fluct: float # RM ?
 
     ew1: float
@@ -23,7 +22,6 @@ class SwarmParams:
     yali: float
     lali: float
     d0ali: float
-    alt: float
     walldistance: float
     yacc: float
     lacc: float
@@ -49,7 +47,7 @@ class SwarmParams:
 
 
 
-def wrap_to_pi(angle):
+def wrap_to_pi(angle) -> float:
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 @dataclass
@@ -61,34 +59,34 @@ class State:
 
     #TODO getter functions for velocity, distance, heading diff, etc
     
-    def get_distance_2d(self, other: State):
+    def get_distance_2d(self, other: 'State') -> float:
         return np.linalg.norm(self.pos[0:2] - other.pos[0:2])
 
-    def get_distance_3d(self, other: State):
+    def get_distance_3d(self, other: 'State') -> float:
         return np.linalg.norm(self.pos - other.pos)
 
-    def get_distance_coupled(self, other: State, params: SwarmParams):
+    def get_distance_coupled(self, other: 'State', params: SwarmParams) -> float:
         return np.sqrt((self.pos[0:2] - other.pos[0:2])**2 + params.alpha_z * (self.pos[2] - other.pos[2])**2)
 
-    def get_speed_2d(self):
+    def get_speed_2d(self) -> float:
         return np.linalg.norm(self.speed[0:2])
 
-    def get_speed_3d(self):
+    def get_speed_3d(self) -> float:
         return np.linalg.norm(self.speed)
 
-    def get_vz(self):
+    def get_vz(self) -> float:
         return self.speed[2]
 
-    def get_course(self, use_heading: bool = False):
+    def get_course(self, use_heading: bool = False) -> float:
         if use_heading:
             return self.heading
         return math.atan2(self.speed[1], self.speed[0])
 
-    def get_course_diff(self, other: State, use_heading: bool = False):
+    def get_course_diff(self, other: 'State', use_heading: bool = False) -> float:
         diff = other.get_course(use_heading) - self.get_course(use_heading)
         return wrap_to_pi(diff)
 
-    def get_viewing_angle(self, other: np.ndarray, use_heading: bool = False):
+    def get_viewing_angle(self, other: np.ndarray, use_heading: bool = False) -> float:
         ''' Viewing angle in 2D
         '''
         diff = other[0:2] - self.pos[0:2]
@@ -108,13 +106,27 @@ class Commands:
 ## interaction functions
 ##
 
-def interaction_wall(agent: State, params: SwarmParams, dist: float, angle: float):
-    fw = math.exp(-(dist / params.lw)**2)
-    ow = params.ew1 * math.cos(angle) + params.ew2 * math.cos(2. * angle)
-    delta_heading = params.yw * math.sin(angle) * (1. + ow) * fw
-    return delta_heading
+def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = None, z_min: float = None, z_max: float = None) -> tuple[float, float]:
+    ''' Interaction with a wall defined by a distance and relative orientation
+        and with floor and ceiling
+    '''
+    dyaw = 0.
+    dvz = 0.
+    if wall is not None:
+        dist, angle = wall
+        fw = math.exp(-(dist / params.lw)**2)
+        ow = params.ew1 * math.cos(angle) + params.ew2 * math.cos(2. * angle)
+        dyaw = params.yw * math.sin(angle) * (1. + ow) * fw
+    if z_min is not None:
+        dz = agent.pos[2] - z_min
+        dvz = params.y_perp / (1. + math.exp(dz / params.dz0))
+    if z_max is not None:
+        dz = z_max - agent.pos[2]
+        dvz = params.y_perp / (1. + math.exp(dz / params.dz0))
+    #TODO a speed variation to slow down on obstacles ?
+    return dyaw, dvz
 
-def interaction_social(agent: State, params: SwarmParams, other: State, r_w: float = 100.):
+def interaction_social(agent: State, params: SwarmParams, other: State, r_w: float = 100.) -> tuple[float, float, float, float]:
     ''' Social interaction of alignment, attraction, speed and vertical speed
         with wall distance r_w for attenuation
     '''
@@ -135,25 +147,26 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     dvz = params.y_z * math.tanh((dz - params.dz0) / params.a_z) * math.exp(-(dij / params.L_z_2)**2)
     return dyaw_ali, dyaw_att, dv, dvz
 
-def interaction_vertical_damping(agent: State, params: SwarmParams):
-    speed = agent.get_speed()
-    if speed > 0.1:
-        dvz = - params.y_para * agent.get_vz() / agent.get_speed()
-    else:
-        dvz = 0
-    return dvz
-
-def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None):
+def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None) -> tuple[float, float]:
+    ''' Navigation interaction with a specified direction and altitude
+        also add the vertical speed damping
+    '''
     dyaw = 0.
     dvz = 0.
     if direction is not None:
         dyaw = params.y_nav * math.sin(direction - agent.get_course(params.use_heading))
     if altitude is not None:
         dvz = -params.y_perp * math.tanh((agent.pos[2] - altitude) / params.a_z)
+    # add vertical speed damping
+    speed = agent.get_speed()
+    if speed > 0.1:
+        dvz += - params.y_para * agent.get_vz() / agent.get_speed()
     #TODO speed attraction to setpoint
     return dyaw, dvz
 
-def interaction_intruder(agent: State, params: SwarmParams, other: State):
+def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tuple[float, float]:
+    ''' Interaction of repulsion with an intruder
+    '''
     dij = agent.get_distance_coupled(other, params)
     dphi = agent.get_course_diff(other, params.use_heading)
     psi = agent.get_viewing_angle(other, params.use_heading)
@@ -165,7 +178,7 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State):
 
 
 
-
+# TODO move somewhere else, not needed here
 class Agent:
     name: str
     agent: State
