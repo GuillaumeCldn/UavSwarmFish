@@ -1,51 +1,52 @@
 Agent:
-  max_velocity: 2.0
-  min_velocity: 0.5
-  velocity: 1.0
-  alt: 5.
-  fluct: 0.0
-  ew1: 1.0
-  ew2: 0.25
-  yw: 0.15 #2.5
-  lw: 7.5
-  yatt: 0.0035
-  latt: 7.0 #9.75
-  d0att: 2.5 #4.2
-  yali: 0.0075 #0.9
-  lali: 11.25
-  d0ali: 3.9
-  y_nav: 0.1
-  a_z: 0.75
-  alpha: 0.9
-  dz0: 2.6
-  walldistance: 100.
-  yacc: 0.15
-  lacc: 9.5
-  dv0: 3.5
-  yob: 3.5
-  lob: 5.0
-  ew1_ob: 1.25
-  ew2_ob: 0.25
-  zmax: 15.
-  zmin: -5.
-  y_para: 0.1
-  y_perp: 0.25
-  y_z: 0.25
-  L_z_2: 10.5
-  alpha_z: 0.5
-  y_intruder: 0.1
-  l_intruder: 8.0
-    #a_z_enemy: 0.45
-    #d0ali_enemy: 2.5
-    #d0att_enemy: 10.56
-    #dv0_enemy: 3.0
-    #dz0_enemy: 1.25
-    #lali_enemy: 5.
-    #latt_enemy: 10.
-    #y_z_enemy: 1.75
-    #yrep_enemy: 3. #7.5
-    #lrep_enemy: 25.
-    #ew1_enemy: 1.
-    #yali_enemy: 0.
-    #yatt_enemy: 0. #6.34
-    #L_z_2_enemy: 10.
+  SwarmParams:
+    max_velocity: 2.0
+    min_velocity: 0.5
+    velocity: 1.0
+    alt: 5.
+    fluct: 0.0
+    ew1: 1.0
+    ew2: 0.25
+    yw: 0.15 #2.5
+    lw: 7.5
+    yatt: 0.0035
+    latt: 7.0 #9.75
+    d0att: 2.5 #4.2
+    yali: 0.0075 #0.9
+    lali: 11.25
+    d0ali: 3.9
+    y_nav: 0.1
+    a_z: 0.75
+    alpha: 0.9
+    dz0: 2.6
+    walldistance: 100.
+    yacc: 0.15
+    lacc: 9.5
+    dv0: 3.5
+    yob: 3.5
+    lob: 5.0
+    ew1_ob: 1.25
+    ew2_ob: 0.25
+    zmax: 15.
+    zmin: -5.
+    y_para: 0.1
+    y_perp: 0.25
+    y_z: 0.25
+    L_z_2: 10.5
+    alpha_z: 0.5
+    y_intruder: 0.1
+    l_intruder: 8.0
+      #a_z_enemy: 0.45
+      #d0ali_enemy: 2.5
+      #d0att_enemy: 10.56
+      #dv0_enemy: 3.0
+      #dz0_enemy: 1.25
+      #lali_enemy: 5.
+      #latt_enemy: 10.
+      #y_z_enemy: 1.75
+      #yrep_enemy: 3. #7.5
+      #lrep_enemy: 25.
+      #ew1_enemy: 1.
+      #yali_enemy: 0.
+      #yatt_enemy: 0. #6.34
+      #L_z_2_enemy: 10.
