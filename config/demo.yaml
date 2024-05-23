@@ -3,22 +3,22 @@ Agent:
     max_velocity: 2.0
     min_velocity: 0.5
     velocity: 1.0
-    alt: 5.
+    alt: 2.
     fluct: 0.0
     ew1: 1.0
     ew2: 0.25
-    yw: 0.15 #2.5
-    lw: 7.5
-    yatt: 0.0035
+    yw: 1.5 #2.5
+    lw: 1.5
+    yatt: 0.35
     latt: 7.0 #9.75
     d0att: 2.5 #4.2
-    yali: 0.0075 #0.9
+    yali: 0.75 #0.9
     lali: 11.25
     d0ali: 3.9
     y_nav: 0.1
     a_z: 0.75
     alpha: 0.9
-    dz0: 2.6
+    dz0: 1.
     walldistance: 100.
     yacc: 0.15
     lacc: 9.5
@@ -32,7 +32,7 @@ Agent:
     y_para: 0.1
     y_perp: 0.25
     y_z: 0.25
-    L_z_2: 10.5
+    L_z_2: 5.
     alpha_z: 0.5
     y_intruder: 0.1
     l_intruder: 8.0
