@@ -104,10 +104,29 @@ class State:
         return out
 
 @dataclass
-class Commands:
-    delta_heading: float
-    delta_speed: float
-    delta_vz: float
+class SwarmCommands:
+    delta_course: float = 0.
+    delta_speed: float = 0.
+    delta_vz: float = 0.
+
+    def __add__(self, other):
+        return SwarmCommands(
+                delta_course = wrap_to_pi(self.delta_course + other.delta_course),
+                delta_speed = self.delta_speed + other.delta_speed,
+                delta_vz = self.delta_vz + other.delta_vz)
+
+    def __iadd__(self, other):
+        self.delta_course = wrap_to_pi(self.delta_course + other.delta_course)
+        self.delta_speed += other.delta_speed
+        self.delta_vz += other.delta_vz
+        return SwarmCommands(self.delta_course, self.delta_speed, self.delta_vz)
+
+    def __str__(self):
+        out = f'Cmd: '
+        out += f'd_course= {np.degrees(self.delta_course):0.2f} '
+        out += f'd_speed= {self.delta_speed:0.2f} '
+        out += f'd_vz= {self.delta_vz:0.2f}'
+        return out
 
 
 ##
@@ -118,21 +137,20 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
     ''' Interaction with a wall defined by a distance and relative orientation
         and with floor and ceiling
     '''
-    dyaw = 0.
-    dvz = 0.
+    cmd = SwarmCommands()
     if wall is not None:
         dist, angle = wall
         fw = math.exp(-(dist / params.lw)**2)
         ow = params.ew1 * math.cos(angle) + params.ew2 * math.cos(2. * angle)
-        dyaw = params.yw * math.sin(angle) * (1. + ow) * fw
+        cmd.delta_course = params.yw * math.sin(angle) * (1. + ow) * fw
     if z_min is not None:
         dz = agent.pos[2] - z_min
-        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
+        cmd.delta_vz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
     if z_max is not None:
         dz = z_max - agent.pos[2]
-        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
+        cmd.delta_vz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
     #TODO a speed variation to slow down on obstacles ?
-    return dyaw, dvz
+    return cmd
 
 def interaction_social(agent: State, params: SwarmParams, other: State, r_w: float = 100.) -> tuple[float, float, float, float]:
     ''' Social interaction of alignment, attraction, speed and vertical speed
@@ -151,27 +169,26 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     #FIXME normalize dv0 - dij
     dv = params.yacc * math.cos(psi) * (params.dv0 - dij) / (1. + dij / params.lacc)
     # vertical
-    #FIXME check sign in tanh, L_z_2 name
+    #FIXME L_z_2 name
     dz = other.pos[2] - agent.pos[2]
     dvz = params.y_z * math.tanh((dz - math.copysign(params.dz0, dz)) / params.a_z) * math.exp(-(dij / params.L_z_2)**2)
-    return dyaw_ali + dyaw_att, dv, dvz
+    return SwarmCommands(delta_course=dyaw_ali+dyaw_att, delta_speed=dv, delta_vz=dvz)
 
 def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None) -> tuple[float, float]:
     ''' Navigation interaction with a specified direction and altitude
         also add the vertical speed damping
     '''
-    dyaw = 0.
-    dvz = 0.
+    cmd = SwarmCommands()
     if direction is not None and agent.get_speed_2d() > 0.5:
-        dyaw = params.y_nav * math.sin(direction - agent.get_course(params.use_heading))
+        cmd.delta_course = params.y_nav * math.sin(direction - agent.get_course(params.use_heading))
     if altitude is not None:
-        dvz += -params.y_perp * math.tanh((agent.pos[2] - altitude) / params.a_z)
+        cmd.delta_vz += -params.y_perp * math.tanh((agent.pos[2] - altitude) / params.a_z)
     # add vertical speed damping
     speed = agent.get_speed_3d()
     if speed > 0.1:
-        dvz += - params.y_para * agent.get_vz() / speed
+        cmd.delta_vz += - params.y_para * agent.get_vz() / speed
     #TODO speed attraction to setpoint
-    return dyaw, dvz
+    return cmd
 
 def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tuple[float, float]:
     ''' Interaction of repulsion with an intruder
@@ -183,7 +200,7 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tup
     dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.ew1 * math.cos(psi)) * math.sin(dphi)
     dz = agent.pos[2] - other.pos[2]
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.L_z_2)**2) #FIXME name of L_z_2
-    return dyaw, dvz
+    return SwarmCommands(delta_course=dyaw, delta_vz=dvz)
 
 def compute_interactions(
         agent: State,
@@ -199,32 +216,26 @@ def compute_interactions(
     # social
     social = []
     for neighbor in neighbors:
-        social.append(interaction_social(agent, params, neighbor)) # FIXME compute r_w
-    influential = sorted(social, key=lambda s: np.fabs(s[0]), reverse=True)
-    dyaw_s, dspeed_s, dvz_s = 0., 0., 0.
+        social.append(interaction_social(agent, params, neighbor, r_w=wall[0]))
+    influential = sorted(social, key=lambda s: np.fabs(s.delta_course), reverse=True)
+    d_social = SwarmCommands()
     for i, s in enumerate(influential):
         if i == nb_influent:
             break
-        dyaw_s += s[0]
-        dspeed_s += s[1]
-        dvz_s += s[2]
+        d_social += s
     # wall and borders
-    dyaw_w, dvz_w = interaction_wall(agent, params, wall, z_min, z_max)
+    d_borders = interaction_wall(agent, params, wall, z_min, z_max)
     # navigation
-    dyaw_nav, dvz_nav = interaction_nav(agent, params, direction, altitude)
+    d_nav = interaction_nav(agent, params, direction, altitude)
     # intruders
-    dyaw_i, dvz_i = 0., 0.
+    d_intruders = SwarmCommands()
     for intruder in intruders:
-        dy, dvz = interaction_intruder(agent, params, intruder)
-        dyaw_i += dy
-        dvz_i += dvz
+        d_intruders += interaction_intruder(agent, params, intruder)
 
-    delta_yaw = dyaw_s + dyaw_w + dyaw_nav + dyaw_i
+    cmd = d_social + d_borders + d_nav + d_intruders
     #print(f'  delta_yaw {np.degrees(delta_yaw):.2f} | s={np.degrees(dyaw_s):.2f}, w={np.degrees(dyaw_w):.2f}, n={np.degrees(dyaw_nav):.2f}, i={np.degrees(dyaw_i):.2f}')
-    delta_speed = dspeed_s
-    delta_vz = dvz_s + dvz_w + dvz_nav + dvz_i
     #print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
-    return np.array([delta_yaw, delta_speed, delta_vz])
+    return cmd
 
 
 # TODO make a better obstacle class
@@ -247,43 +258,8 @@ class Arena:
         return dist, wrap_to_pi(angle)
 
 
-# TODO move somewhere else, not needed here
-class Agent:
-    name: str
-    agent: State
-    neighbors = {}
-
-    def __init__(self, name: str, agent: State):
-        self.name = name
-        self.agent = agent
-
-    def update_agent(self, pos: np.ndarray, speed: np.ndarray, heading: float, timestamp: float):
-        self.agent.pos = pos
-        self.agent.speed = speed
-        self.agent.heading = heading
-        self.agent.timestamp = timestamp
-
-    def update_neighbor(self, name: str, pos: np.ndarray, speed: np.ndarray, heading: float, timestamp: float):
-        if name in self.neighbors:
-            self.neighbors[name].pos = pos
-            self.neighbors[name].speed = speed
-            self.neighbors[name].heading = heading
-            self.neighbors[name].timestamp = timestamp
-        else:
-            self.neighbors[name] = State(pos, speed, heading, timestamp)
-
-    def __str__(self):
-        nb = len(self.neighbors)
-        return f'agent {self.name} at {self.agent}\nwith {nb} neighbors:\n{self.neighbors}\n'
-
 
 if __name__ == '__main__':
     # run tests
-    state = State(np.random.rand(3), np.zeros(3), 0., 0.)
-    uav = Agent("uav0", state)
-    for i in range(5):
-        ns = State(np.random.rand(3), np.zeros(3), float(i+1), 0.)
-        uav.update_neighbor('uav'+str(i+1), ns.pos, ns.speed, ns.heading, ns.timestamp)
-
-    print('uav state', uav)
+    pass
 
