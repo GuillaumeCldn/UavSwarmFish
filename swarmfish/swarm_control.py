@@ -8,7 +8,6 @@ class SwarmParams:
     max_velocity: float
     min_velocity: float
     velocity: float
-    alt: float
     fluct: float # RM ?
 
     ew1: float
@@ -22,7 +21,6 @@ class SwarmParams:
     yali: float
     lali: float
     d0ali: float
-    walldistance: float
     yacc: float
     lacc: float
     dv0: float
@@ -31,6 +29,7 @@ class SwarmParams:
     yob: float
     lob: float
     y_perp: float
+    dz_perp: float
     y_para: float
     y_z: float
     a_z: float
@@ -41,6 +40,7 @@ class SwarmParams:
     L_z_2: float
     y_nav: float
     y_intruder: float
+    y_z_intruder: float
     l_intruder: float
 
     use_heading: bool = False
@@ -127,10 +127,10 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
         dyaw = params.yw * math.sin(angle) * (1. + ow) * fw
     if z_min is not None:
         dz = agent.pos[2] - z_min
-        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz0) / params.dz0))
+        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
     if z_max is not None:
         dz = z_max - agent.pos[2]
-        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz0) / params.dz0))
+        dvz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
     #TODO a speed variation to slow down on obstacles ?
     return dyaw, dvz
 
@@ -146,13 +146,14 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     # attraction
     psi = agent.get_viewing_angle(other, params.use_heading) # viewing angle
     dyaw_att = params.yatt * ((dij / params.d0att - 1.) / (1. + (dij / params.latt)**2)) * math.sin(psi) * attenuation
+    #print(f'dyaw_att {np.degrees(dyaw_att):0.2f} | dyaw_ali {np.degrees(dyaw_ali):0.2f} | social {np.degrees(dyaw_att+dyaw_ali):.2f}')
     # speed
     #FIXME normalize dv0 - dij
     dv = params.yacc * math.cos(psi) * (params.dv0 - dij) / (1. + dij / params.lacc)
     # vertical
     #FIXME check sign in tanh, L_z_2 name
-    dz = agent.pos[2] - other.pos[2]
-    dvz = params.y_z * math.tanh((dz - params.dz0) / params.a_z) * math.exp(-(dij / params.L_z_2)**2)
+    dz = other.pos[2] - agent.pos[2]
+    dvz = params.y_z * math.tanh((dz - math.copysign(params.dz0, dz)) / params.a_z) * math.exp(-(dij / params.L_z_2)**2)
     return dyaw_ali + dyaw_att, dv, dvz
 
 def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None) -> tuple[float, float]:
@@ -179,7 +180,7 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tup
     dphi = agent.get_course_diff(other, params.use_heading)
     psi = agent.get_viewing_angle(other, params.use_heading)
     #FIXME use dphi or psi for even function ?
-    dyaw = -params.y_intruder * math.exp((dij / params.l_intruder)**2) * (1. + params.ew1 * math.cos(psi)) * math.sin(dphi)
+    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.ew1 * math.cos(psi)) * math.sin(dphi)
     dz = agent.pos[2] - other.pos[2]
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.L_z_2)**2) #FIXME name of L_z_2
     return dyaw, dvz
@@ -199,11 +200,10 @@ def compute_interactions(
     social = []
     for neighbor in neighbors:
         social.append(interaction_social(agent, params, neighbor)) # FIXME compute r_w
-    influential = sorted(social, key=lambda s: s[0])
+    influential = sorted(social, key=lambda s: np.fabs(s[0]), reverse=True)
     dyaw_s, dspeed_s, dvz_s = 0., 0., 0.
     for i, s in enumerate(influential):
         if i == nb_influent:
-            #print("social",i,influential,social)
             break
         dyaw_s += s[0]
         dspeed_s += s[1]
@@ -220,10 +220,10 @@ def compute_interactions(
         dvz_i += dvz
 
     delta_yaw = dyaw_s + dyaw_w + dyaw_nav + dyaw_i
-    print(f'  delta_yaw {np.degrees(delta_yaw):.2f} | s={np.degrees(dyaw_s):.2f}, w={np.degrees(dyaw_w):.2f}, n={np.degrees(dyaw_nav):.2f}, i={np.degrees(dyaw_i):.2f}')
+    #print(f'  delta_yaw {np.degrees(delta_yaw):.2f} | s={np.degrees(dyaw_s):.2f}, w={np.degrees(dyaw_w):.2f}, n={np.degrees(dyaw_nav):.2f}, i={np.degrees(dyaw_i):.2f}')
     delta_speed = dspeed_s
     delta_vz = dvz_s + dvz_w + dvz_nav + dvz_i
-    print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
+    #print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
     return np.array([delta_yaw, delta_speed, delta_vz])
 
 
