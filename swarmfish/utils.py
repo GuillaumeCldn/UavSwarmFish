@@ -2,6 +2,7 @@ from swarmfish.swarm_control import SwarmParams
 import yaml
 import json
 import logging
+import numpy as np
 
 log = logging.getLogger(__name__)
 

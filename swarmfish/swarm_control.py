@@ -46,9 +46,9 @@ class SwarmParams:
     use_heading: bool = False
 
 
-
 def wrap_to_pi(angle) -> float:
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
 
 @dataclass
 class State:
@@ -239,25 +239,6 @@ def compute_interactions(
 
 
 # TODO make a better obstacle class
-class Arena:
-    center: np.ndarray
-    radius: float
-
-    def __init__(self, center: np.ndarray = None, radius: float = 100.):
-        if center is None:
-            center = np.array([0., 0.])
-        self.center = center
-        self.radius = radius
-
-    def get_wall(self, agent: State, params: SwarmParams):
-        dpos = agent.pos[0:2] - self.center
-        dist = self.radius - np.linalg.norm(dpos)
-        course = agent.get_course(params.use_heading)
-        theta = math.atan2(dpos[1], dpos[0])
-        angle = course - theta
-        return dist, wrap_to_pi(angle)
-
-
 
 if __name__ == '__main__':
     # run tests

@@ -33,6 +33,6 @@ Agent:
     y_z: 0.2
     L_z_2: 5.
     alpha_z: 0.5
-    y_intruder: 4.4
-    y_z_intruder: 0.5
-    l_intruder: 2.
+    y_intruder: 3.4
+    y_z_intruder: 0.8
+    l_intruder: 3.
