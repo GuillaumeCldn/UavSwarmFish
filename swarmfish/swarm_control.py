@@ -7,38 +7,42 @@ class SwarmParams:
     # collective motion parameters
     max_velocity: float
     min_velocity: float
-    velocity: float
-    fluct: float # RM ?
+    zmax: float
+    zmin: float
 
-    ew1: float
-    ew2: float
-    alpha: float
-    yw: float
-    lw: float
-    yatt: float
-    latt: float
-    d0att: float
-    yali: float
-    lali: float
-    d0ali: float
-    yacc: float
-    lacc: float
-    dv0: float
-    ew1_ob: float
-    ew2_ob: float
-    yob: float
-    lob: float
+    # wall
+    y_w: float
+    l_w: float
+    e_w1: float
+    e_w2: float
+    # attraction
+    y_att: float
+    l_att: float
+    d0_att: float
+    a_att: float
+    b_att: float
+    # alignment
+    y_ali: float
+    l_ali: float
+    d0_ali: float
+    a_ali: float
+    b_ali: float
+    # speed
+    y_acc: float
+    l_acc: float
+    d0_v: float
+    # vertical
+    y_z: float
+    l_z: float
+    a_z: float
+    d0_z: float
+    sigma_z: float
+    # nav
+    y_nav: float
     y_perp: float
     dz_perp: float
     y_para: float
-    y_z: float
-    a_z: float
-    zmax: float
-    zmin: float
-    dz0: float
-    alpha_z: float
-    L_z_2: float
-    y_nav: float
+    # intruders
     y_intruder: float
     y_z_intruder: float
     l_intruder: float
@@ -57,8 +61,6 @@ class State:
     heading: float
     timestamp: float
 
-    #TODO getter functions for velocity, distance, heading diff, etc
-    
     def get_distance_2d(self, other: 'State') -> float:
         return np.linalg.norm(self.pos[0:2] - other.pos[0:2])
 
@@ -66,7 +68,7 @@ class State:
         return np.linalg.norm(self.pos - other.pos)
 
     def get_distance_coupled(self, other: 'State', params: SwarmParams) -> float:
-        return np.sqrt(np.sum((self.pos[0:2] - other.pos[0:2])**2) + params.alpha_z * (self.pos[2] - other.pos[2])**2)
+        return np.sqrt(np.sum((self.pos[0:2] - other.pos[0:2])**2) + ((self.pos[2] - other.pos[2]) / params.sigma_z)**2)
 
     def get_speed_2d(self) -> float:
         return np.linalg.norm(self.speed[0:2])
@@ -140,9 +142,9 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
     cmd = SwarmCommands()
     if wall is not None:
         dist, angle = wall
-        fw = math.exp(-(dist / params.lw)**2)
-        ow = params.ew1 * math.cos(angle) + params.ew2 * math.cos(2. * angle)
-        cmd.delta_course = params.yw * math.sin(angle) * (1. + ow) * fw
+        fw = math.exp(-(dist / params.l_w)**2)
+        ow = params.e_w1 * math.cos(angle) + params.e_w2 * math.cos(2. * angle)
+        cmd.delta_course = params.y_w * math.sin(angle) * (1. + ow) * fw
     if z_min is not None:
         dz = agent.pos[2] - z_min
         cmd.delta_vz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
@@ -156,22 +158,30 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     ''' Social interaction of alignment, attraction, speed and vertical speed
         with wall distance r_w for attenuation
     '''
-    attenuation = 1. - math.exp(-(r_w/params.lw)**2)        # wall attenuation
-    dij = agent.get_distance_coupled(other, params)         # distance between agents
-    # alignment
-    dphi = agent.get_course_diff(other, params.use_heading) # course/heading difference
-    dyaw_ali = params.yali * ((dij + params.d0ali) / params.d0ali) * math.exp(-(dij/params.lali)**2) * math.sin(dphi) * attenuation
-    # attraction
+    attenuation = 1. - math.exp(-(r_w/params.l_w)**2)        # wall attenuation
+    dij = agent.get_distance_coupled(other, params)          # distance between agents
+    dphi = agent.get_course_diff(other, params.use_heading)  # course/heading difference
     psi = agent.get_viewing_angle(other, params.use_heading) # viewing angle
-    dyaw_att = params.yatt * ((dij / params.d0att - 1.) / (1. + (dij / params.latt)**2)) * math.sin(psi) * attenuation
+
+    # alignment
+    f_ali = params.y_ali * (dij / params.d0_ali + 1.) * math.exp(-(dij/params.l_ali)**2)
+    o_ali = math.sin(dphi) * (1. + params.a_ali * math.cos(2. * dphi))
+    e_ali = 1. + params.b_ali * math.cos(psi)
+    dyaw_ali = f_ali * o_ali * e_ali * attenuation
+
+    # attraction
+    f_att = params.y_att * ((dij / params.d0_att - 1.) / (1. + (dij / params.l_att)**2))
+    o_att = math.sin(psi) * (1. - params.a_att * math.cos(psi))
+    e_att = 1. - params.b_att * math.cos(dphi)
+    dyaw_att = f_att * o_att * e_att * attenuation
     #print(f'dyaw_att {np.degrees(dyaw_att):0.2f} | dyaw_ali {np.degrees(dyaw_ali):0.2f} | social {np.degrees(dyaw_att+dyaw_ali):.2f}')
+
     # speed
-    #FIXME normalize dv0 - dij
-    dv = params.yacc * math.cos(psi) * (params.dv0 - dij) / (1. + dij / params.lacc)
+    dv = params.y_acc * math.cos(psi) * ((params.d0_v - dij) / params.d0_v) / (1. + dij / params.l_acc)
+
     # vertical
-    #FIXME L_z_2 name
     dz = other.pos[2] - agent.pos[2]
-    dvz = params.y_z * math.tanh((dz - math.copysign(params.dz0, dz)) / params.a_z) * math.exp(-(dij / params.L_z_2)**2)
+    dvz = params.y_z * math.tanh((dz - math.copysign(params.d0_z, dz)) / params.a_z) * math.exp(-(dij / params.l_z)**2)
     return SwarmCommands(delta_course=dyaw_ali+dyaw_att, delta_speed=dv, delta_vz=dvz)
 
 def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None) -> tuple[float, float]:
@@ -197,9 +207,9 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tup
     dphi = agent.get_course_diff(other, params.use_heading)
     psi = agent.get_viewing_angle(other, params.use_heading)
     #FIXME use dphi or psi for even function ?
-    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.ew1 * math.cos(psi)) * math.sin(dphi)
+    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.e_w1 * math.cos(psi)) * math.sin(dphi)
     dz = agent.pos[2] - other.pos[2]
-    dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.L_z_2)**2) #FIXME name of L_z_2
+    dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.l_z)**2)
     return SwarmCommands(delta_course=dyaw, delta_vz=dvz)
 
 def compute_interactions(
@@ -237,8 +247,6 @@ def compute_interactions(
     #print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
     return cmd
 
-
-# TODO make a better obstacle class
 
 if __name__ == '__main__':
     # run tests

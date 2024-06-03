@@ -1,38 +1,42 @@
 Agent:
   SwarmParams:
     max_velocity: 2.0
-    min_velocity: 0.5
-    velocity: 1.0
-    fluct: 0.0
-    ew1: 1.0
-    ew2: 0.25
-    yw: 1.5 #2.5
-    lw: 2.5
-    yatt: 0.5 # 0.35
-    latt: 5.0 #9.75
-    d0att: 2. #4.2
-    yali: 0.5 #0.75 #0.9
-    lali: 2.5
-    d0ali: 2.
-    y_nav: 0.5
-    a_z: 1.
-    alpha: 0.9
-    dz0: 1.5
-    yacc: 0.15
-    lacc: 2.5
-    dv0: 3.5
-    yob: 3.5
-    lob: 5.0
-    ew1_ob: 1.25
-    ew2_ob: 0.25
+    min_velocity: 0.
     zmax: 15.
     zmin: -5.
-    y_para: 0.1
+
+    y_w: 1.5 #2.5
+    l_w: 2.5
+    e_w1: 1.0
+    e_w2: 0.25
+
+    y_att: 0.5 # 0.35
+    l_att: 5.0 #9.75
+    d0_att: 3.
+    a_att: 0.33
+    b_att: 0.48
+
+    y_ali: 0.5
+    l_ali: 3.
+    d0_ali: 2.
+    a_ali: 0.3
+    b_ali: 0.6
+
+    y_acc: 0.15
+    l_acc: 2.5
+    d0_v: 3.5
+
+    y_z: 0.2
+    l_z: 5.
+    a_z: 1.
+    d0_z: 2.
+    sigma_z: 2.
+
+    y_nav: 0.5
     y_perp: 0.5
     dz_perp: 1.
-    y_z: 0.2
-    L_z_2: 5.
-    alpha_z: 0.5
+    y_para: 0.1
+
     y_intruder: 3.4
     y_z_intruder: 0.8
     l_intruder: 3.

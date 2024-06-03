@@ -45,7 +45,7 @@ class CircleObstacle(Obstacle):
             return None
         if self.z_max is not None and agent.pos[2] > self.z_max:
             return None
-        dpos = agent.pos[0:2] - self.center
+        dpos = self.center - agent.pos[0:2]
         dist = np.linalg.norm(dpos) - self.radius
         course = agent.get_course(params.use_heading)
         theta = math.atan2(dpos[1], dpos[0])
