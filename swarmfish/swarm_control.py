@@ -61,6 +61,7 @@ class State:
     speed: np.ndarray
     heading: float
     timestamp: float
+    name: str = "none"
 
     def get_distance_2d(self, other: 'State') -> float:
         return np.linalg.norm(self.pos[0:2] - other.pos[0:2])
@@ -98,7 +99,7 @@ class State:
         return wrap_to_pi(viewing_angle)
 
     def __str__(self):
-        out = f'State: '
+        out = f'State {self.name}: '
         out += f'pos= {self.pos[0]:.2f}, {self.pos[1]:.2f}, {self.pos[2]:.2f} | '
         out += f'speed= {self.speed[0]:.2f}, {self.speed[1]:.2f}, {self.speed[2]:.2f} | '
         out += f'vel= {self.get_speed_3d():.2f} course= {np.degrees(self.get_course()):0.2f} '
@@ -163,6 +164,7 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     dij = agent.get_distance_coupled(other, params)          # distance between agents
     dphi = agent.get_course_diff(other, params.use_heading)  # course/heading difference
     psi = agent.get_viewing_angle(other, params.use_heading) # viewing angle
+    #print(f"  attrib {agent.name} <-> {other.name} | dij={dij:0.2f}  dphi={np.degrees(dphi):0.2f} psi={np.degrees(psi):0.2f}")
 
     # alignment
     f_ali = params.y_ali * (dij / params.d0_ali + 1.) * math.exp(-(dij/params.l_ali)**2)
@@ -227,13 +229,14 @@ def compute_interactions(
     # social
     social = []
     for neighbor in neighbors:
-        social.append(interaction_social(agent, params, neighbor, r_w=wall[0]))
-    influential = sorted(social, key=lambda s: np.fabs(s.delta_course), reverse=True)
+        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=wall[0])))
+    influential = sorted(social, key=lambda s: np.fabs(s[2].delta_course), reverse=True)
     d_social = SwarmCommands()
     for i, s in enumerate(influential):
         if i == nb_influent:
             break
-        d_social += s
+        print(f"Most influential for {s[0]}: {s[1]}")
+        d_social += s[2]
     # wall and borders
     d_borders = interaction_wall(agent, params, wall, z_min, z_max)
     # navigation
