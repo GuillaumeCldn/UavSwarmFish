@@ -9,6 +9,8 @@ Agent:
     l_w: 2.5
     e_w1: 1.0
     e_w2: 0.25
+    y_z_w: 0.5
+    dz_w: 1.
 
     y_att: 0.5 # 0.35
     l_att: 5.0 #9.75
@@ -33,9 +35,8 @@ Agent:
     sigma_z: 2.
 
     y_nav: 0.5
-    y_perp: 0.5
-    dz_perp: 1.
-    y_para: 0.1
+    y_z_nav: 0.5
+    y_vz_nav: 0.1
 
     y_intruder: 3.4
     y_z_intruder: 0.8

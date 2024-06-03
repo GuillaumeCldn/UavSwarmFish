@@ -15,6 +15,8 @@ class SwarmParams:
     l_w: float
     e_w1: float
     e_w2: float
+    y_z_w: float
+    dz_w: float
     # attraction
     y_att: float
     l_att: float
@@ -39,9 +41,8 @@ class SwarmParams:
     sigma_z: float
     # nav
     y_nav: float
-    y_perp: float
-    dz_perp: float
-    y_para: float
+    y_z_nav: float
+    y_vz_nav: float
     # intruders
     y_intruder: float
     y_z_intruder: float
@@ -147,10 +148,10 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
         cmd.delta_course = params.y_w * math.sin(angle) * (1. + ow) * fw
     if z_min is not None:
         dz = agent.pos[2] - z_min
-        cmd.delta_vz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
+        cmd.delta_vz += 2. * params.y_z_w / (1. + math.exp((dz - params.dz_w) / params.dz_w))
     if z_max is not None:
         dz = z_max - agent.pos[2]
-        cmd.delta_vz += 2. * params.y_perp / (1. + math.exp((dz - params.dz_perp) / params.dz_perp))
+        cmd.delta_vz +=  - 2. * params.y_z_w / (1. + math.exp((dz - params.dz_w) / params.dz_w))
     #TODO a speed variation to slow down on obstacles ?
     return cmd
 
@@ -192,11 +193,11 @@ def interaction_nav(agent: State, params: SwarmParams, direction: float = None, 
     if direction is not None and agent.get_speed_2d() > 0.5:
         cmd.delta_course = params.y_nav * math.sin(direction - agent.get_course(params.use_heading))
     if altitude is not None:
-        cmd.delta_vz += -params.y_perp * math.tanh((agent.pos[2] - altitude) / params.a_z)
+        cmd.delta_vz += -params.y_z_nav * math.tanh((agent.pos[2] - altitude) / params.a_z)
     # add vertical speed damping
     speed = agent.get_speed_3d()
     if speed > 0.1:
-        cmd.delta_vz += - params.y_para * agent.get_vz() / speed
+        cmd.delta_vz += - params.y_vz_nav * agent.get_vz() / speed
     #TODO speed attraction to setpoint
     return cmd
 
