@@ -13,8 +13,8 @@ class SwarmParams:
     # wall
     y_w: float
     l_w: float
-    e_w1: float
-    e_w2: float
+    e1_w: float
+    e2_w: float
     y_z_w: float
     dz_w: float
     # attraction
@@ -22,13 +22,15 @@ class SwarmParams:
     l_att: float
     d0_att: float
     a_att: float
-    b_att: float
+    b1_att: float
+    b2_att: float
     # alignment
     y_ali: float
     l_ali: float
     d0_ali: float
     a_ali: float
-    b_ali: float
+    b1_ali: float
+    b2_ali: float
     # speed
     y_acc: float
     l_acc: float
@@ -137,7 +139,7 @@ class SwarmCommands:
 ## interaction functions
 ##
 
-def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = None, z_min: float = None, z_max: float = None) -> tuple[float, float]:
+def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = None, z_min: float = None, z_max: float = None) -> SwarmCommands:
     ''' Interaction with a wall defined by a distance and relative orientation
         and with floor and ceiling
     '''
@@ -145,7 +147,7 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
     if wall is not None:
         dist, angle = wall
         fw = math.exp(-(dist / params.l_w)**2)
-        ow = params.e_w1 * math.cos(angle) + params.e_w2 * math.cos(2. * angle)
+        ow = params.e1_w * math.cos(angle) + params.e2_w * math.cos(2. * angle)
         cmd.delta_course = params.y_w * math.sin(angle) * (1. + ow) * fw
     if z_min is not None:
         dz = agent.pos[2] - z_min
@@ -156,7 +158,7 @@ def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = N
     #TODO a speed variation to slow down on obstacles ?
     return cmd
 
-def interaction_social(agent: State, params: SwarmParams, other: State, r_w: float = 100.) -> tuple[float, float, float, float]:
+def interaction_social(agent: State, params: SwarmParams, other: State, r_w: float = 100.) -> SwarmCommands:
     ''' Social interaction of alignment, attraction, speed and vertical speed
         with wall distance r_w for attenuation
     '''
@@ -167,17 +169,19 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     #print(f"  attrib {agent.name} <-> {other.name} | dij={dij:0.2f}  dphi={np.degrees(dphi):0.2f} psi={np.degrees(psi):0.2f}")
 
     # alignment
-    f_ali = params.y_ali * (dij / params.d0_ali + 1.) * math.exp(-(dij/params.l_ali)**2)
+    f_ali = params.y_ali * (dij / params.d0_ali + 1.) * math.exp(-(dij / params.l_ali)**2)
     o_ali = math.sin(dphi) * (1. + params.a_ali * math.cos(2. * dphi))
-    e_ali = 1. + params.b_ali * math.cos(psi)
+    e_ali = 1. + params.b1_ali * math.cos(psi) - params.b2_ali * math.cos(2. * psi)
     dyaw_ali = f_ali * o_ali * e_ali * attenuation
 
     # attraction
     f_att = params.y_att * ((dij / params.d0_att - 1.) / (1. + (dij / params.l_att)**2))
     o_att = math.sin(psi) * (1. - params.a_att * math.cos(psi))
-    e_att = 1. - params.b_att * math.cos(dphi)
+    e_att = 1. - params.b1_att * math.cos(dphi) - params.b2_att * math.cos(2. * dphi)
     dyaw_att = f_att * o_att * e_att * attenuation
-    #print(f'dyaw_att {np.degrees(dyaw_att):0.2f} | dyaw_ali {np.degrees(dyaw_ali):0.2f} | social {np.degrees(dyaw_att+dyaw_ali):.2f}')
+    #print(f"   att {params.d0_att:.2f} {dij:0.2f} | {(dij / params.d0_att - 1.):0.4f} | f(dij)={f_att:0.2f} o(psi)={o_att:0.2f} e(dphi)={e_att:0.2f}")
+    #print(f"   ali {params.d0_ali:.2f} {dij:0.2f} | {(dij / params.d0_ali + 1.):0.4f} | f(dij)={f_ali:0.2f} o(dphi)={o_ali:0.2f} e(psi)={e_ali:0.2f}")
+    #print(f'   dyaw_att {np.degrees(dyaw_att):0.2f} | dyaw_ali {np.degrees(dyaw_ali):0.2f} | social {np.degrees(dyaw_att+dyaw_ali):.2f}')
 
     # speed
     dv = params.y_acc * math.cos(psi) * ((params.d0_v - dij) / params.d0_v) / (1. + dij / params.l_acc)
@@ -203,14 +207,14 @@ def interaction_nav(agent: State, params: SwarmParams, direction: float = None, 
     #TODO speed attraction to setpoint
     return cmd
 
-def interaction_intruder(agent: State, params: SwarmParams, other: State) -> tuple[float, float]:
+def interaction_intruder(agent: State, params: SwarmParams, other: State) -> SwarmCommands:
     ''' Interaction of repulsion with an intruder
     '''
     dij = agent.get_distance_coupled(other, params)
     dphi = agent.get_course_diff(other, params.use_heading)
     psi = agent.get_viewing_angle(other, params.use_heading)
     #FIXME use dphi or psi for even function ?
-    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.e_w1 * math.cos(psi)) * math.sin(dphi)
+    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.e1_w * math.cos(psi)) * math.sin(dphi)
     dz = agent.pos[2] - other.pos[2]
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.l_z)**2)
     return SwarmCommands(delta_course=dyaw, delta_vz=dvz)
@@ -225,17 +229,22 @@ def compute_interactions(
         wall: (float, float) = None,
         z_min: float = None,
         z_max: float = None,
-        intruders: list[State] = []) -> tuple[float, float]:
+        intruders: list[State] = []) -> tuple[SwarmCommands, list[tuple[str, str]]]:
     # social
     social = []
     for neighbor in neighbors:
         social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=wall[0])))
-    influential = sorted(social, key=lambda s: np.fabs(s[2].delta_course), reverse=True)
+    def compute_influence(x):
+        return math.sqrt(x.delta_speed**2 + (x.delta_course * agent.get_speed_2d())**2 + x.delta_vz**2)
+        #return np.fabs(x.delta_course)
+    influential = sorted(social, key=lambda s: compute_influence(s[2]), reverse=True)
     d_social = SwarmCommands()
+    most_influentials = []
     for i, s in enumerate(influential):
         if i == nb_influent:
             break
-        print(f"Most influential for {s[0]}: {s[1]}")
+        #print(f"Most influential for {s[0]}: {s[1]}")
+        most_influentials.append((s[0], s[1]))
         d_social += s[2]
     # wall and borders
     d_borders = interaction_wall(agent, params, wall, z_min, z_max)
@@ -249,7 +258,7 @@ def compute_interactions(
     cmd = d_social + d_borders + d_nav + d_intruders
     #print(f'  delta_yaw {np.degrees(delta_yaw):.2f} | s={np.degrees(dyaw_s):.2f}, w={np.degrees(dyaw_w):.2f}, n={np.degrees(dyaw_nav):.2f}, i={np.degrees(dyaw_i):.2f}')
     #print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
-    return cmd
+    return cmd, most_influentials
 
 
 if __name__ == '__main__':
