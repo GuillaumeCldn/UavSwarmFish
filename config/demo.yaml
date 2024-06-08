@@ -43,3 +43,8 @@ Agent:
     y_intruder: 3.4
     y_z_intruder: 0.8
     l_intruder: 3.
+
+    y_obs: 1.
+    t_obs: 3.
+    e1_obs: 1.4
+    e2_obs: 0.4

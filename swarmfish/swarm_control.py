@@ -49,6 +49,11 @@ class SwarmParams:
     y_intruder: float
     y_z_intruder: float
     l_intruder: float
+    # obstacles
+    y_obs: float
+    t_obs: float
+    e1_obs: float
+    e2_obs: float
 
     use_heading: bool = False
 
@@ -219,6 +224,28 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> Swa
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.l_z)**2)
     return SwarmCommands(delta_course=dyaw, delta_vz=dvz)
 
+def interaction_obstacle(agent: State, params: SwarmParams, obstacle: (float, float) = None) -> SwarmCommands:
+    ''' Interaction with an obstacle defined by a distance and relative orientation
+    '''
+    cmd = SwarmCommands()
+    if obstacle is None:
+        return cmd
+
+    dist, angle = obstacle
+    speed = agent.get_speed_2d()
+    collision_speed = speed * math.cos(angle)
+    #print(f'obs speed {speed:.2f}, {dist:.2f}, {collision_speed:.2}')
+    if collision_speed < 0.1:
+        return cmd # speed is too small or negative
+    tau = dist / collision_speed
+    fw = math.exp(-(tau / params.t_obs)**2)
+    ow = params.e1_obs * math.cos(angle) + params.e2_obs * math.cos(2. * angle)
+    cmd.delta_course = params.y_obs * math.sin(angle) * (1. + ow) * fw
+    #print(f'obs delta {np.degrees(cmd.delta_course):.2f}, {tau}, {fw}, {ow}')
+    #TODO a speed variation to slow down on obstacles ?
+    return cmd
+
+
 def compute_interactions(
         agent: State,
         params: SwarmParams,
@@ -229,6 +256,7 @@ def compute_interactions(
         wall: (float, float) = None,
         z_min: float = None,
         z_max: float = None,
+        obstacles: list[(float, float)] = None,
         intruders: list[State] = []) -> tuple[SwarmCommands, list[tuple[str, str]]]:
     # social
     social = []
@@ -254,8 +282,12 @@ def compute_interactions(
     d_intruders = SwarmCommands()
     for intruder in intruders:
         d_intruders += interaction_intruder(agent, params, intruder)
+    # obstacles
+    d_obstacles = SwarmCommands()
+    for obstacle in obstacles:
+        d_obstacles += interaction_obstacle(agent, params, obstacle)
 
-    cmd = d_social + d_borders + d_nav + d_intruders
+    cmd = d_social + d_borders + d_nav + d_intruders + d_obstacles
     #print(f'  delta_yaw {np.degrees(delta_yaw):.2f} | s={np.degrees(dyaw_s):.2f}, w={np.degrees(dyaw_w):.2f}, n={np.degrees(dyaw_nav):.2f}, i={np.degrees(dyaw_i):.2f}')
     #print(f'  delta_vz {delta_vz:.2f} | s={dvz_s:.2f}, w={dvz_w:.2f}, n={dvz_nav:.2f}, i={dvz_i:.2f}')
     return cmd, most_influentials
