@@ -256,12 +256,16 @@ def compute_interactions(
         wall: (float, float) = None,
         z_min: float = None,
         z_max: float = None,
-        obstacles: list[(float, float)] = None,
+        obstacles: list[(float, float)] = [],
         intruders: list[State] = []) -> tuple[SwarmCommands, list[tuple[str, str]]]:
     # social
     social = []
     for neighbor in neighbors:
-        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=wall[0])))
+        if wall is None:
+            r_w = 100.
+        else:
+            r_w = wall[0]
+        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=r_w)))
     def compute_influence(x):
         return math.sqrt(x.delta_speed**2 + (x.delta_course * agent.get_speed_2d())**2 + x.delta_vz**2)
         #return np.fabs(x.delta_course)
