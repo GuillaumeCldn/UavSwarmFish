@@ -84,7 +84,7 @@ class PolygonObstacle(Obstacle):
         self.z_min = z_min
         self.z_max = z_max
         self.nb_vert = np.shape(vertices)[0] # numbers of rows
-        if self.nb_vert < 4:
+        if self.nb_vert < 3:
             raise Exception('polygon obstacle too small')
 
     def get_wall(self, agent: State, params: SwarmParams = None):

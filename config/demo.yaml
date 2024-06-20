@@ -14,12 +14,12 @@ Agent:
 
     y_att: 0.5 # 0.35
     l_att: 5.0 #9.75
-    d0_att: 3.
+    d0_att: 4.
     a_att: 0.33
     b1_att: 0.48
     b2_att: 0.13
 
-    y_ali: 0.5
+    y_ali: 0.3
     l_ali: 3.
     d0_ali: 2.
     a_ali: 0.2
