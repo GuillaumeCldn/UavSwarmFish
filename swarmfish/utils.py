@@ -81,8 +81,8 @@ def compute_quantification(trajectories: np.ndarray, skip: int = 0) -> np.ndarra
         #0: dispersion
         #1: polarization
         #2: milling
-        #3: fluctuation of polarization
-        #4: fluctuation of dispersion
+        #3: fluctuation of dispersion
+        #4: fluctuation of polarization
         #5: fluctuation of milling
 
     '''
