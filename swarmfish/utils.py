@@ -7,7 +7,7 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-def load_params_from_yaml(file_name: str) -> SwarmParams | None:
+def load_params_from_yaml(file_name: str, node: str = 'SwarmParams') -> SwarmParams | None:
     try:
         f = open(file_name)
     except FileNotFoundError:
@@ -17,14 +17,19 @@ def load_params_from_yaml(file_name: str) -> SwarmParams | None:
             log.info('Parsing yaml config')
             yaml_string = f.read()
             parsed = yaml.load(yaml_string, Loader=yaml.FullLoader)
-            return SwarmParams(**parsed['Agent']['SwarmParams'])
+            if node == 'SwarmParams':
+                return SwarmParams(**parsed['Agent']['SwarmParams'])
+            elif node == 'NavParams':
+                return NavParams(**parsed['Agent']['NavParams'])
+            else:
+                return None
         except Exception as e:
             log.error(f'Parsing error {e}')
         finally:
             f.close()
     return None
 
-def load_params_from_json(file_name: str) -> SwarmParams | None:
+def load_params_from_json(file_name: str, node: str = 'SwarmParams') -> SwarmParams | None:
     try:
         f = open(file_name)
     except FileNotFoundError:
@@ -34,7 +39,12 @@ def load_params_from_json(file_name: str) -> SwarmParams | None:
             log.info('Parsing json config')
             json_string = f.read()
             parsed = json.loads(json_string)
-            return SwarmParams(**parsed['Agent']['SwarmParams'])
+            if node == 'SwarmParams':
+                return SwarmParams(**parsed['Agent']['SwarmParams'])
+            elif node == 'NavParams':
+                return NavParams(**parsed['Agent']['NavParams'])
+            else:
+                return None
         except Exception as e:
             log.error(f'Parsing error {e}')
         finally:

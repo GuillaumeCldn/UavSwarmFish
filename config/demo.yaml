@@ -1,10 +1,5 @@
 Agent:
   SwarmParams:
-    max_velocity: 2.0
-    min_velocity: 0.
-    zmax: 15.
-    zmin: -5.
-
     y_w: 1.5 #2.5
     l_w: 2.5
     e1_w: 1.0
@@ -48,3 +43,10 @@ Agent:
     t_obs: 3.
     e1_obs: 1.4
     e2_obs: 0.4
+
+  NavParams:
+    max_velocity: 2.0
+    min_velocity: 0.
+    zmax: 15.
+    zmin: -5.
+

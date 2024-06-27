@@ -4,12 +4,6 @@ from dataclasses import dataclass
 
 @dataclass
 class SwarmParams:
-    # collective motion parameters
-    max_velocity: float
-    min_velocity: float
-    zmax: float
-    zmin: float
-
     # wall
     y_w: float
     l_w: float
@@ -56,6 +50,14 @@ class SwarmParams:
     e2_obs: float
 
     use_heading: bool = False
+
+@dataclass
+class NavParams:
+    # collective motion parameters
+    max_velocity: float = None
+    min_velocity: float = None
+    zmax: float = None
+    zmin: float = None
 
 
 def wrap_to_pi(angle) -> float:
@@ -202,7 +204,7 @@ def interaction_nav(agent: State, params: SwarmParams, direction: float = None, 
     '''
     cmd = SwarmCommands()
     if direction is not None and agent.get_speed_2d() > 0.5:
-        cmd.delta_course = params.y_nav * math.sin(direction - agent.get_course(params.use_heading))
+        cmd.delta_course = params.y_nav * math.atan(direction - agent.get_course(params.use_heading))
     if altitude is not None:
         cmd.delta_vz += -params.y_z_nav * math.tanh((agent.pos[2] - altitude) / params.a_z)
     # add vertical speed damping
