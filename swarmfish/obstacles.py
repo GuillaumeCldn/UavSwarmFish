@@ -122,6 +122,15 @@ class PolygonObstacle(Obstacle):
         angle = course - theta
         return dist, wrap_to_pi(angle)
 
+    def get_top(self) -> np.ndarray:
+        ''' return 3D vertices at the top of the obstacle
+        '''
+        if self.z_max is None:
+            top = np.zeros((self.nb_vert, 1))
+        else:
+            top = np.full((self.nb_vert, 1), self.z_max)
+        return np.hstack((self.vertices, top))
+
     def __str__(self):
         return f"Obstacle polygon '{self.name}': size={self.nb_vert}, z_min={self.z_min}, z_max={self.z_max}"
 
