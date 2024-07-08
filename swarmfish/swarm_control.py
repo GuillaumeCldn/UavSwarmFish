@@ -183,7 +183,7 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
 
     # attraction
     f_att = params.y_att * ((dij / params.d0_att - 1.) / (1. + (dij / params.l_att)**2))
-    o_att = math.sin(psi) * (1. - params.a_att * math.cos(psi))
+    o_att = math.sin(psi) * (1. + params.a_att * math.cos(psi))
     e_att = 1. - params.b1_att * math.cos(dphi) - params.b2_att * math.cos(2. * dphi)
     dyaw_att = f_att * o_att * e_att * attenuation
     #print(f"   att {params.d0_att:.2f} {dij:0.2f} | {(dij / params.d0_att - 1.):0.4f} | f(dij)={f_att:0.2f} o(psi)={o_att:0.2f} e(dphi)={e_att:0.2f}")
@@ -191,7 +191,7 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     #print(f'   dyaw_att {np.degrees(dyaw_att):0.2f} | dyaw_ali {np.degrees(dyaw_ali):0.2f} | social {np.degrees(dyaw_att+dyaw_ali):.2f}')
 
     # speed
-    dv = params.y_acc * math.cos(psi) * ((params.d0_v - dij) / params.d0_v) / (1. + dij / params.l_acc)
+    dv = params.y_acc * math.cos(psi) * ((dij / params.d0_v) - 1.) / (1. + dij / params.l_acc)
 
     # vertical
     dz = other.pos[2] - agent.pos[2]
@@ -260,14 +260,12 @@ def compute_interactions(
         z_max: float = None,
         obstacles: list[(float, float)] = [],
         intruders: list[State] = []) -> tuple[SwarmCommands, list[tuple[str, str]]]:
+    # closest wall distance
+    walls = np.array([ w[0] for w in [wall] + obstacles if w is not None ])
     # social
     social = []
     for neighbor in neighbors:
-        if wall is None:
-            r_w = 100.
-        else:
-            r_w = wall[0]
-        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=r_w)))
+        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=np.min(walls, initial=100.))))
     def compute_influence(x):
         return math.sqrt(x.delta_speed**2 + (x.delta_course * agent.get_speed_2d())**2 + x.delta_vz**2)
         #return np.fabs(x.delta_course)
