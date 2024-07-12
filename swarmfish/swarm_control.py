@@ -220,11 +220,19 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> Swa
     dij = agent.get_distance_coupled(other, params)
     dphi = agent.get_course_diff(other, params.use_heading)
     psi = agent.get_viewing_angle(other, params.use_heading)
+    psi_int = other.get_viewing_angle(agent, params.use_heading)
+    speed = agent.get_speed_2d()
+    speed_int = other.get_speed_2d()
+    relative_vel_ratio = (speed * math.cos(psi) + speed_int * math.cos(psi_int)) / max(speed + speed_int, 0.1) 
+    #print(f'{agent.name} -> {other.name}: {relative_vel_ratio:0.2f} | {np.degrees(psi):0.2f} {np.degrees(psi_int):0.2f}')
     #FIXME use dphi or psi for even function ?
-    dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.e1_w * math.cos(psi)) * math.sin(dphi)
+    #dyaw = -params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + params.e1_w * math.cos(psi)) * math.sin(dphi)
+    F_rep = params.y_intruder * math.exp(-(dij / params.l_intruder)**2) * (1. + relative_vel_ratio)
+    dyaw = - F_rep * math.sin(psi) / max(speed, 0.1)
+    dv = - F_rep * math.cos(psi)
     dz = agent.pos[2] - other.pos[2]
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.l_z)**2)
-    return SwarmCommands(delta_course=dyaw, delta_vz=dvz)
+    return SwarmCommands(delta_course=dyaw, delta_speed=dv, delta_vz=dvz)
 
 def interaction_obstacle(agent: State, params: SwarmParams, obstacle: (float, float) = None) -> SwarmCommands:
     ''' Interaction with an obstacle defined by a distance and relative orientation
@@ -242,9 +250,10 @@ def interaction_obstacle(agent: State, params: SwarmParams, obstacle: (float, fl
     tau = dist / collision_speed
     fw = math.exp(-(tau / params.t_obs)**2)
     ow = params.e1_obs * math.cos(angle) + params.e2_obs * math.cos(2. * angle)
-    cmd.delta_course = params.y_obs * math.sin(angle) * (1. + ow) * fw
+    F_obs = params.y_obs * (1. + ow) * fw
+    cmd.delta_course = F_obs * math.sin(angle) / max(speed, 0.1)
+    cmd.delta_speed = - F_obs * math.cos(angle)
     #print(f'obs delta {np.degrees(cmd.delta_course):.2f}, {tau}, {fw}, {ow}')
-    #TODO a speed variation to slow down on obstacles ?
     return cmd
 
 
