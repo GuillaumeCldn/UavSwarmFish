@@ -102,7 +102,7 @@ def compute_quantification(trajectories: np.ndarray, skip: int = 0) -> np.ndarra
     pos = trajectories[:,0:2,:]
     pos_bary = np.mean(pos, axis=0)
     dpos = pos - pos_bary
-    vel = trajectories[:,3:5,:]
+    vel = trajectories[:,10:12,:]
     vel_bary = np.mean(vel, axis=0)
     dvel = vel - vel_bary
 
