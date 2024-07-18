@@ -142,3 +142,14 @@ def plot_traj_from_log(filename: str):
         plt.plot(traj[i,0,:], traj[i,1,:])
     plt.show()
 
+def plot_traj_3D_from_log(filename: str):
+    import matplotlib.pyplot as plt
+
+    data = np.load(filename)
+    traj = data['states']
+    nb_uav = traj.shape[0]
+    ax = plt.figure().add_subplot(projection='3d')
+    for i in range(nb_uav):
+        ax.plot(traj[i,0,:], traj[i,1,:], traj[i,2,:], )
+    plt.show()
+
