@@ -107,6 +107,14 @@ class State:
         viewing_angle = direction - self.get_course(use_heading)
         return wrap_to_pi(viewing_angle)
 
+    def get_elevation_angle(self, other: 'State') -> float:
+        ''' Vertical viewing angle
+        '''
+        dz = other.pos[2] - self.pos[2]
+        dh = self.get_distance_2d(other)
+        elevation = math.atan2(dz, dh)
+        return elevation
+
     def __str__(self):
         out = f'State {self.name}: '
         out += f'pos= {self.pos[0]:.2f}, {self.pos[1]:.2f}, {self.pos[2]:.2f} | '
@@ -194,8 +202,10 @@ def interaction_social(agent: State, params: SwarmParams, other: State, r_w: flo
     dv = params.y_acc * math.cos(psi) * ((dij / params.d0_v) - 1.) / (1. + dij / params.l_acc)
 
     # vertical
-    dz = other.pos[2] - agent.pos[2]
-    dvz = params.y_z * math.tanh((dz - math.copysign(params.d0_z, dz)) / params.a_z) * math.exp(-(dij / params.l_z)**2)
+    #dz = other.pos[2] - agent.pos[2]
+    #dvz = params.y_z * math.tanh((dz - math.copysign(params.d0_z, dz)) / params.a_z) * math.exp(-(dij / params.l_z)**2)
+    d3D = agent.get_distance_3d(other)
+    dvz = params.y_z * (d3D / params.d0_z - 1.) * math.exp(-(dij / params.l_z)**2) * math.sin(agent.get_elevation_angle(other))
     return SwarmCommands(delta_course=dyaw_ali+dyaw_att, delta_speed=dv, delta_vz=dvz)
 
 def interaction_nav(agent: State, params: SwarmParams, direction: float = None, altitude: float = None) -> tuple[float, float]:
