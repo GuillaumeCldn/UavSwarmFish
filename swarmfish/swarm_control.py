@@ -146,7 +146,7 @@ class SwarmCommands:
 ## interaction functions
 ##
 
-def interaction_wall(agent: State, params: SwarmParams, wall: (float, float) = None, z_min: float = None, z_max: float = None) -> SwarmCommands:
+def interaction_wall(agent: State, params: SwarmParams, wall: tuple[float, float] = None, z_min: float = None, z_max: float = None) -> SwarmCommands:
     ''' Interaction with a wall defined by a distance and relative orientation
         and with floor and ceiling
     '''
@@ -234,7 +234,7 @@ def interaction_intruder(agent: State, params: SwarmParams, other: State) -> Swa
     dvz = params.y_z_intruder * math.tanh(dz / params.a_z) * math.exp(-(dij / params.l_z)**2)
     return SwarmCommands(delta_course=dyaw, delta_speed=dv, delta_vz=dvz)
 
-def interaction_obstacle(agent: State, params: SwarmParams, obstacle: (float, float) = None) -> SwarmCommands:
+def interaction_obstacle(agent: State, params: SwarmParams, obstacle: tuple[float, float] = None) -> SwarmCommands:
     ''' Interaction with an obstacle defined by a distance and relative orientation
     '''
     cmd = SwarmCommands()
@@ -264,7 +264,7 @@ def compute_interactions(
         nb_influent: int = 1,
         direction: float = None,
         altitude: float = None,
-        wall: (float, float) = None,
+        wall: tuple[float, float] = None,
         z_min: float = None,
         z_max: float = None,
         obstacles: list[(float, float)] = [],
