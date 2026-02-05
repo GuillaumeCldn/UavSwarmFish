@@ -79,7 +79,7 @@ class State:
         return np.linalg.norm(self.pos - other.pos)
 
     def get_distance_coupled(self, other: 'State', params: SwarmParams) -> float:
-        return np.sqrt(np.sum((self.pos[0:2] - other.pos[0:2])**2) + ((self.pos[2] - other.pos[2]) / params.sigma_z)**2)
+        return np.sqrt((self.pos[0] - other.pos[0])**2 + (self.pos[1] - other.pos[1])**2 + ((self.pos[2] - other.pos[2]) / params.sigma_z)**2)
 
     def get_speed_2d(self) -> float:
         return np.linalg.norm(self.speed[0:2])
@@ -270,13 +270,14 @@ def compute_interactions(
         obstacles: list[(float, float)] = [],
         intruders: list[State] = []) -> tuple[SwarmCommands, list[tuple[str, str]]]:
     # closest wall distance
-    walls = np.array([ w[0] for w in [wall] + obstacles if w is not None ])
+    closest_wall = np.min(np.array([ w[0] for w in [wall] + obstacles if w is not None ]), initial=100.)
     # social
     social = []
     for neighbor in neighbors:
-        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=np.min(walls, initial=100.))))
+        social.append((agent.name, neighbor.name, interaction_social(agent, params, neighbor, r_w=closest_wall)))
+    speed_2d = agent.get_speed_2d()
     def compute_influence(x):
-        return math.sqrt(x.delta_speed**2 + (x.delta_course * agent.get_speed_2d())**2 + x.delta_vz**2)
+        return math.sqrt(x.delta_speed**2 + (x.delta_course * speed_2d)**2 + x.delta_vz**2)
         #return np.fabs(x.delta_course)
     influential = sorted(social, key=lambda s: compute_influence(s[2]), reverse=True)
     d_social = SwarmCommands()
