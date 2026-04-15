@@ -1,4 +1,4 @@
-from swarmfish.swarm_control import SwarmParams
+from swarmfish.swarm_control import SwarmParams, NavParams, ExploParams
 from swarmfish.obstacles import PolygonObstacle
 import yaml
 import json
@@ -21,6 +21,8 @@ def load_params_from_yaml(file_name: str, node: str = 'SwarmParams') -> SwarmPar
                 return SwarmParams(**parsed['Agent']['SwarmParams'])
             elif node == 'NavParams':
                 return NavParams(**parsed['Agent']['NavParams'])
+            elif node == 'ExploParams':
+                return ExploParams(**parsed['Agent']['ExploParams'])
             else:
                 return None
         except Exception as e:

@@ -54,15 +54,20 @@ class SwarmParams:
 @dataclass
 class NavParams:
     # collective motion parameters
-    max_velocity: float = None
-    min_velocity: float = None
-    zmax: float = None
-    zmin: float = None
+    max_velocity: float
+    min_velocity: float
+    zmax: float
+    zmin: float
 
+@dataclass
+class ExploParams:
+    arena_radius: float
+    grid_res: float
+    sim_steps: int
+    neighbors: int 
 
 def wrap_to_pi(angle) -> float:
     return (angle + np.pi) % (2 * np.pi) - np.pi
-
 
 @dataclass
 class State:
